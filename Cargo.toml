@@ -1,0 +1,11 @@
+[package]
+name = "parket"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+parquet = { version = "53", features = ["arrow"] }
+arrow = "53"
+anyhow = "1"
