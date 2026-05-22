@@ -139,14 +139,39 @@ fn draw_schema(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 fn draw_data(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     let visible_rows = area.height.saturating_sub(3) as usize;
     let num_cols = app.schema.fields().len();
-    let visible_cols = ((area.width.saturating_sub(2)) / 16).max(1) as usize;
-
     let col_start = app.col_offset;
-    let col_end = (col_start + visible_cols).min(num_cols);
 
-    let header_cells: Vec<Cell> = app
-        .schema
-        .fields()
+    let data = app.data_rows(app.row_offset, visible_rows);
+    let needle = app.active_filter.to_lowercase();
+    let fields = app.schema.fields();
+
+    // compute per-column widths and greedily pick how many fit
+    let avail = area.width.saturating_sub(2) as usize;
+    let mut used = 0usize;
+    let mut col_end = col_start;
+    for i in col_start..num_cols {
+        let header_len = fields[i].name().len();
+        let content_len = data.iter().map(|row| row.get(i).map(|s| s.len()).unwrap_or(0)).max().unwrap_or(0);
+        let w = header_len.max(content_len).max(6).min(40);
+        let needed = if col_end > col_start { w + 1 } else { w }; // separator
+        if used + needed > avail && col_end > col_start {
+            break;
+        }
+        used += needed;
+        col_end += 1;
+    }
+    let col_end = col_end.max(col_start + 1).min(num_cols);
+
+    let widths: Vec<Constraint> = (col_start..col_end)
+        .map(|i| {
+            let header_len = fields[i].name().len();
+            let content_len = data.iter().map(|row| row.get(i).map(|s| s.len()).unwrap_or(0)).max().unwrap_or(0);
+            let w = header_len.max(content_len).max(6).min(40) as u16;
+            Constraint::Length(w)
+        })
+        .collect();
+
+    let header_cells: Vec<Cell> = fields
         .iter()
         .enumerate()
         .filter(|(i, _)| *i >= col_start && *i < col_end)
@@ -156,9 +181,6 @@ fn draw_data(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         })
         .collect();
     let header = Row::new(header_cells).style(Style::default().fg(Color::Cyan));
-
-    let data = app.data_rows(app.row_offset, visible_rows);
-    let needle = app.active_filter.to_lowercase();
 
     let rows: Vec<Row> = data
         .iter()
@@ -178,16 +200,6 @@ fn draw_data(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
                 })
                 .collect();
             Row::new(cells)
-        })
-        .collect();
-
-    let fields = app.schema.fields();
-    let widths: Vec<Constraint> = (col_start..col_end)
-        .map(|i| {
-            let header_len = fields[i].name().len();
-            let content_len = data.iter().map(|row| row[i].len()).max().unwrap_or(0);
-            let w = header_len.max(content_len).max(6).min(40) as u16;
-            Constraint::Length(w)
         })
         .collect();
 
