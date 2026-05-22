@@ -1,5 +1,6 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
+use crate::data::cell_to_string;
 use crate::export::{self, ExportData, ExportFormat};
 
 pub enum Mode {
@@ -154,9 +155,7 @@ impl App {
                 let batch = &self.batches[bi];
                 (0..batch.num_columns()).any(|col| {
                     let arr = batch.column(col);
-                    arrow::util::display::array_value_to_string(arr, ri)
-                        .map(|s| s.to_lowercase().contains(&needle))
-                        .unwrap_or(false)
+                    cell_to_string(arr, ri).to_lowercase().contains(&needle)
                 })
             })
             .collect();
@@ -208,8 +207,7 @@ impl App {
                 (0..batch.num_columns())
                     .map(|col| {
                         let arr = batch.column(col);
-                        arrow::util::display::array_value_to_string(arr, ri)
-                            .unwrap_or_else(|_| "?".to_string())
+                        cell_to_string(arr, ri)
                     })
                     .collect()
             })
@@ -226,8 +224,7 @@ impl App {
                 (0..batch.num_columns())
                     .map(|col| {
                         let arr = batch.column(col);
-                        arrow::util::display::array_value_to_string(arr, ri)
-                            .unwrap_or_else(|_| "?".to_string())
+                        cell_to_string(arr, ri)
                     })
                     .collect()
             })
