@@ -31,6 +31,8 @@ pub struct App {
     pub active_filter: String,
     pub status_msg: Option<String>,
     pub export_selected: usize,
+    /// Last rendered visible column range [col_offset..visible_col_end)
+    pub visible_col_end: usize,
 }
 
 impl App {
@@ -55,6 +57,7 @@ impl App {
             active_filter: String::new(),
             status_msg: None,
             export_selected: 0,
+            visible_col_end: 0,
         }
     }
 

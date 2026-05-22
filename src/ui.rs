@@ -9,7 +9,7 @@ use ratatui::{
 };
 use std::fmt::Write as _;
 
-pub fn draw(f: &mut Frame, app: &App) {
+pub fn draw(f: &mut Frame, app: &mut App) {
     let searching = matches!(app.input_mode, InputMode::Search);
     let exporting = matches!(app.input_mode, InputMode::Export);
 
@@ -85,13 +85,16 @@ pub fn draw(f: &mut Frame, app: &App) {
         };
         match app.mode {
             Mode::Schema => format!(" Schema | {} columns", app.schema.fields().len()),
-            Mode::Data => format!(
-                " Row {}/{} | {} cols{}  g/G=first/last  PgUp/Dn=page  /=search  e=export  Esc=clear",
-                if app.total_rows() == 0 { 0 } else { app.row_offset + 1 },
-                app.total_rows(),
-                app.schema.fields().len(),
-                filter_hint,
-            ),
+            Mode::Data => {
+                let total_rows = app.total_rows();
+                let row_from = if total_rows == 0 { 0 } else { app.row_offset + 1 };
+                let col_from = if app.schema.fields().is_empty() { 0 } else { app.col_offset + 1 };
+                let col_to = app.visible_col_end;
+                let total_cols = app.schema.fields().len();
+                format!(
+                    " Rows {row_from}/{total_rows} | Cols {col_from}-{col_to}/{total_cols}{filter_hint}  g/G=first/last  PgUp/Dn=page  /=search  e=export  Esc=clear",
+                )
+            }
         }
     };
     let statusbar = Paragraph::new(status)
@@ -99,7 +102,7 @@ pub fn draw(f: &mut Frame, app: &App) {
     f.render_widget(statusbar, status_area);
 }
 
-fn draw_schema(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
+fn draw_schema(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect) {
     let header = Row::new(vec![
         Cell::from("Name").style(Style::default().add_modifier(Modifier::BOLD)),
         Cell::from("Type").style(Style::default().add_modifier(Modifier::BOLD)),
@@ -136,7 +139,7 @@ fn draw_schema(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     f.render_widget(table, area);
 }
 
-fn draw_data(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
+fn draw_data(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect) {
     let visible_rows = area.height.saturating_sub(3) as usize;
     let num_cols = app.schema.fields().len();
     let col_start = app.col_offset;
@@ -161,6 +164,7 @@ fn draw_data(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         col_end += 1;
     }
     let col_end = col_end.max(col_start + 1).min(num_cols);
+    app.visible_col_end = col_end;
 
     let widths: Vec<Constraint> = (col_start..col_end)
         .map(|i| {
