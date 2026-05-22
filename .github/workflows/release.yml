@@ -60,13 +60,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release list --repo ${{ github.repository }} --limit 100 --json tagName \
+          tags=$(gh release list --repo ${{ github.repository }} --limit 100 --json tagName 2>/dev/null \
             | jq -r '.[].tagName' \
-            | grep -v "^${{ github.ref_name }}$" \
-            | while read tag; do
-                gh release view "$tag" --repo ${{ github.repository }} --json assets \
-                  | jq -r '.assets[].id' \
-                  | while read asset_id; do
-                      gh api -X DELETE /repos/${{ github.repository }}/releases/assets/"$asset_id"
-                    done
-              done
+            | grep -v "^${{ github.ref_name }}$") || true
+          for tag in $tags; do
+            gh release view "$tag" --repo ${{ github.repository }} --json assets \
+              | jq -r '.assets[].id' \
+              | while read asset_id; do
+                  gh api -X DELETE /repos/${{ github.repository }}/releases/assets/"$asset_id" || true
+                done
+          done
