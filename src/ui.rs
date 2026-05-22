@@ -181,8 +181,14 @@ fn draw_data(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         })
         .collect();
 
+    let fields = app.schema.fields();
     let widths: Vec<Constraint> = (col_start..col_end)
-        .map(|_| Constraint::Length(16))
+        .map(|i| {
+            let header_len = fields[i].name().len();
+            let content_len = data.iter().map(|row| row[i].len()).max().unwrap_or(0);
+            let w = header_len.max(content_len).max(6).min(40) as u16;
+            Constraint::Length(w)
+        })
         .collect();
 
     let title = if !app.active_filter.is_empty() {
