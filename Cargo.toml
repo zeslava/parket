@@ -1,6 +1,6 @@
 [package]
 name = "parket"
-version = "0.1.6"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
@@ -9,3 +9,4 @@ crossterm = "0.28"
 parquet = { version = "53", features = ["arrow"] }
 arrow = { version = "53", features = ["chrono-tz"] }
 anyhow = "1"
+clap = { version = "4", features = ["derive"] }

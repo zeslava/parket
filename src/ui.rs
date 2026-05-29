@@ -28,7 +28,11 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .split(f.area());
 
     let table_area = chunks[1];
-    let bar_area = if searching || exporting { Some(chunks[2]) } else { None };
+    let bar_area = if searching || exporting {
+        Some(chunks[2])
+    } else {
+        None
+    };
     let status_area = chunks[if searching || exporting { 3 } else { 2 }];
 
     // Tabs
@@ -42,8 +46,16 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     };
     let tabs = Tabs::new(titles)
         .select(selected)
-        .block(Block::default().borders(Borders::ALL).title(app.path.as_str()))
-        .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(app.path.as_str()),
+        )
+        .highlight_style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        );
     f.render_widget(tabs, chunks[0]);
 
     match app.mode {
@@ -60,7 +72,9 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         } else if exporting {
             let mut line = String::from(" Export: ");
             for (i, fmt) in ExportFormat::ALL.iter().enumerate() {
-                if i > 0 { line.push_str("  "); }
+                if i > 0 {
+                    line.push_str("  ");
+                }
                 if i == app.export_selected {
                     let _ = write!(line, "[{}]", fmt.ext().to_uppercase());
                 } else {
@@ -68,8 +82,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
                 }
             }
             line.push_str("  ←/→ select  Enter=confirm  Esc=cancel");
-            let bar = Paragraph::new(line)
-                .style(Style::default().bg(Color::Green).fg(Color::Black));
+            let bar =
+                Paragraph::new(line).style(Style::default().bg(Color::Green).fg(Color::Black));
             f.render_widget(bar, area);
         }
     }
@@ -79,7 +93,12 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         format!(" {}", msg)
     } else {
         let filter_hint = if !app.active_filter.is_empty() {
-            format!(" [filter: {}] {}/{}", app.active_filter, app.total_rows(), app.total_rows())
+            format!(
+                " [filter: {}] {}/{}",
+                app.active_filter,
+                app.total_rows(),
+                app.total_rows()
+            )
         } else {
             String::new()
         };
@@ -87,18 +106,26 @@ pub fn draw(f: &mut Frame, app: &mut App) {
             Mode::Schema => format!(" Schema | {} columns", app.schema.fields().len()),
             Mode::Data => {
                 let total_rows = app.total_rows();
-                let row_from = if total_rows == 0 { 0 } else { app.row_offset + 1 };
-                let col_from = if app.schema.fields().is_empty() { 0 } else { app.col_offset + 1 };
+                let row_from = if total_rows == 0 {
+                    0
+                } else {
+                    app.row_offset + 1
+                };
+                let col_from = if app.schema.fields().is_empty() {
+                    0
+                } else {
+                    app.col_offset + 1
+                };
                 let col_to = app.visible_col_end;
                 let total_cols = app.schema.fields().len();
                 format!(
-                    " Rows {row_from}/{total_rows} | Cols {col_from}-{col_to}/{total_cols}{filter_hint}  g/G=first/last  PgUp/Dn=page  /=search  e=export  Esc=clear",
+                    " Row: {row_from}/{total_rows} , Col: {col_from}-{col_to}/{total_cols}{filter_hint} | g/G=first/last  PgUp/Dn=page  /=search  e=export  Esc=clear  q=quit",
                 )
             }
         }
     };
-    let statusbar = Paragraph::new(status)
-        .style(Style::default().bg(Color::DarkGray).fg(Color::White));
+    let statusbar =
+        Paragraph::new(status).style(Style::default().bg(Color::DarkGray).fg(Color::White));
     f.render_widget(statusbar, status_area);
 }
 
@@ -154,8 +181,12 @@ fn draw_data(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect) {
     let mut col_end = col_start;
     for i in col_start..num_cols {
         let header_len = fields[i].name().len();
-        let content_len = data.iter().map(|row| row.get(i).map(|s| s.len()).unwrap_or(0)).max().unwrap_or(0);
-        let w = header_len.max(content_len).max(6).min(40);
+        let content_len = data
+            .iter()
+            .map(|row| row.get(i).map(|s| s.len()).unwrap_or(0))
+            .max()
+            .unwrap_or(0);
+        let w = header_len.max(content_len).clamp(6, 40);
         let needed = if col_end > col_start { w + 1 } else { w }; // separator
         if used + needed > avail && col_end > col_start {
             break;
@@ -169,8 +200,12 @@ fn draw_data(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect) {
     let widths: Vec<Constraint> = (col_start..col_end)
         .map(|i| {
             let header_len = fields[i].name().len();
-            let content_len = data.iter().map(|row| row.get(i).map(|s| s.len()).unwrap_or(0)).max().unwrap_or(0);
-            let w = header_len.max(content_len).max(6).min(40) as u16;
+            let content_len = data
+                .iter()
+                .map(|row| row.get(i).map(|s| s.len()).unwrap_or(0))
+                .max()
+                .unwrap_or(0);
+            let w = header_len.max(content_len).clamp(6, 40) as u16;
             Constraint::Length(w)
         })
         .collect();
@@ -197,7 +232,11 @@ fn draw_data(f: &mut Frame, app: &mut App, area: ratatui::layout::Rect) {
                     let matches = !needle.is_empty() && v.to_lowercase().contains(&needle);
                     let cell = Cell::from(v.as_str().to_string());
                     if matches {
-                        cell.style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+                        cell.style(
+                            Style::default()
+                                .fg(Color::Yellow)
+                                .add_modifier(Modifier::BOLD),
+                        )
                     } else {
                         cell
                     }

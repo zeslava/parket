@@ -1,7 +1,7 @@
-use arrow::array::RecordBatch;
-use arrow::datatypes::SchemaRef;
 use crate::data::cell_to_string;
 use crate::export::{self, ExportData, ExportFormat};
+use arrow::array::RecordBatch;
+use arrow::datatypes::SchemaRef;
 
 pub enum Mode {
     Schema,
@@ -13,7 +13,6 @@ pub enum InputMode {
     Search,
     Export,
 }
-
 
 pub struct App {
     pub path: String,
@@ -175,7 +174,8 @@ impl App {
     }
 
     pub fn export_prev(&mut self) {
-        self.export_selected = self.export_selected
+        self.export_selected = self
+            .export_selected
             .checked_sub(1)
             .unwrap_or(ExportFormat::ALL.len() - 1);
     }
@@ -191,9 +191,17 @@ impl App {
     }
 
     pub fn export(&mut self, fmt: ExportFormat) {
-        let columns: Vec<String> = self.schema.fields().iter().map(|f| f.name().clone()).collect();
+        let columns: Vec<String> = self
+            .schema
+            .fields()
+            .iter()
+            .map(|f| f.name().clone())
+            .collect();
         let rows = self.all_filtered_rows();
-        let data = ExportData { columns: &columns, rows };
+        let data = ExportData {
+            columns: &columns,
+            rows,
+        };
         let out_path = export::output_path(&self.path, fmt.ext());
         let result = export::run(fmt, &data, &out_path);
         self.status_msg = Some(match result {

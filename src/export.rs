@@ -10,11 +10,8 @@ pub enum ExportFormat {
 }
 
 impl ExportFormat {
-    pub const ALL: &'static [ExportFormat] = &[
-        ExportFormat::Json,
-        ExportFormat::Jsonl,
-        ExportFormat::Csv,
-    ];
+    pub const ALL: &'static [ExportFormat] =
+        &[ExportFormat::Json, ExportFormat::Jsonl, ExportFormat::Csv];
 
     pub fn ext(self) -> &'static str {
         match self {
@@ -31,62 +28,67 @@ pub struct ExportData<'a> {
 }
 
 pub fn run(format: ExportFormat, data: &ExportData, out_path: &str) -> Result<()> {
+    let mut file = std::fs::File::create(out_path)?;
+    write_to(format, data, &mut file)
+}
+
+pub fn write_to(format: ExportFormat, data: &ExportData, w: &mut dyn Write) -> Result<()> {
     match format {
-        ExportFormat::Json => export_json(data, out_path),
-        ExportFormat::Jsonl => export_jsonl(data, out_path),
-        ExportFormat::Csv => export_csv(data, out_path),
+        ExportFormat::Json => write_json(data, w),
+        ExportFormat::Jsonl => write_jsonl(data, w),
+        ExportFormat::Csv => write_csv(data, w),
     }
 }
 
-fn export_json(data: &ExportData, out_path: &str) -> Result<()> {
-    let mut file = std::fs::File::create(out_path)?;
-    file.write_all(b"[")?;
+fn write_json(data: &ExportData, w: &mut dyn Write) -> Result<()> {
+    w.write_all(b"[")?;
     for (i, row) in data.rows.iter().enumerate() {
         if i > 0 {
-            file.write_all(b",")?;
+            w.write_all(b",")?;
         }
-        file.write_all(b"\n  {")?;
+        w.write_all(b"\n  {")?;
         for (j, (col, val)) in data.columns.iter().zip(row.iter()).enumerate() {
             if j > 0 {
-                file.write_all(b",")?;
+                w.write_all(b",")?;
             }
-            write!(file, "\n    {}: {}", json_string(col), json_value(val))?;
+            write!(w, "\n    {}: {}", json_string(col), json_value(val))?;
         }
-        file.write_all(b"\n  }")?;
+        w.write_all(b"\n  }")?;
     }
-    file.write_all(b"\n]\n")?;
+    w.write_all(b"\n]\n")?;
     Ok(())
 }
 
-pub fn export_jsonl(data: &ExportData, out_path: &str) -> Result<()> {
-    let mut file = std::fs::File::create(out_path)?;
+fn write_jsonl(data: &ExportData, w: &mut dyn Write) -> Result<()> {
     for row in &data.rows {
-        file.write_all(b"{")?;
+        w.write_all(b"{")?;
         for (j, (col, val)) in data.columns.iter().zip(row.iter()).enumerate() {
             if j > 0 {
-                file.write_all(b",")?;
+                w.write_all(b",")?;
             }
-            write!(file, "{}: {}", json_string(col), json_value(val))?;
+            write!(w, "{}: {}", json_string(col), json_value(val))?;
         }
-        file.write_all(b"}\n")?;
+        w.write_all(b"}\n")?;
     }
     Ok(())
 }
 
-pub fn export_csv(data: &ExportData, out_path: &str) -> Result<()> {
-    let mut file = std::fs::File::create(out_path)?;
+fn write_csv(data: &ExportData, w: &mut dyn Write) -> Result<()> {
     let header: Vec<String> = data.columns.iter().map(|c| csv_field(c)).collect();
-    writeln!(file, "{}", header.join(","))?;
+    writeln!(w, "{}", header.join(","))?;
     for row in &data.rows {
         let fields: Vec<String> = row.iter().map(|v| csv_field(v)).collect();
-        writeln!(file, "{}", fields.join(","))?;
+        writeln!(w, "{}", fields.join(","))?;
     }
     Ok(())
 }
 
 pub fn output_path(parquet_path: &str, ext: &str) -> String {
     let path = Path::new(parquet_path);
-    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("output");
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("output");
     let dir = path.parent().and_then(|p| p.to_str()).unwrap_or(".");
     format!("{}/{}.{}", dir, stem, ext)
 }
